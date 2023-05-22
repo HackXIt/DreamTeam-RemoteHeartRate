@@ -54,7 +54,6 @@ void UsageFault_Handler(void);
 void DebugMon_Handler(void);
 void I2C1_EV_IRQHandler(void);
 void I2C1_ER_IRQHandler(void);
-void USART1_IRQHandler(void);
 void TIM6_DAC_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 
