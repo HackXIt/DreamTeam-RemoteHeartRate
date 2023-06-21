@@ -51,7 +51,7 @@
 osThreadId_t initTaskHandle;
 const osThreadAttr_t initTask_attributes = {
   .name = "initTask",
-  .stack_size = 64 * 4,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 
@@ -63,6 +63,21 @@ const osThreadAttr_t initTask_attributes = {
 void StartInitTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/* Hook prototypes */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
+
+/* USER CODE BEGIN 4 */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
+{
+   /* Run time stack overflow checking is performed if
+   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
+   called if a stack overflow is detected. */
+
+	asm("BKPT #0"); /* If a stack overflow is detected then, the debugger stop
+		the firmware execution here */
+}
+/* USER CODE END 4 */
 
 /**
   * @brief  FreeRTOS initialization
