@@ -1,0 +1,271 @@
+Make oneliners with:
+https://www.textfixer.com/html/compress-html-compression.php
+// Version 1
+<!DOCTYPE html>
+<html>
+<head>
+<title>HEARTMONITOR</title>
+<link rel='icon' href='data:,'>
+</head>
+<body>
+<body>
+<p id='hr' style='font-size: 72px;'>%hhu</p>
+<p id='hr-calc' style='font-size: 72px;'>%hhu</p>
+<script>
+let updatePage = async () => {
+    let response = await fetch('http://%s:%s', {
+        method: 'GET',
+        headers: {
+      		'Accept': 'application/json'
+	},
+    });
+    if(response.ok){
+        let ret = await response.json();
+        document.getElementById('hr').innerText = ret.HR;
+        document.getElementById('hr-calc').innerText = ret.HRCALC
+    }
+    else {
+        console.error('HTTP error: ' + response.status);
+    }
+};
+setInterval(updatePage, 1000);
+</script></body></html>
+// Version 2
+<!DOCTYPE html>
+<html>
+<body>
+<p id='data' style='font-size: 50vw;'>%hhu</p>
+<script>
+function fetchData() {
+  fetch('http://%s:%s')
+    .then(response => response.text())
+    .then(data => {
+      // Updating the HTML content with the fetched data
+      document.getElementById('data').innerHTML = data;
+    })
+    .catch(error => console.error('Error:', error));
+}
+setInterval(fetchData, 5000);
+</script></body></html>
+// Version 3 (https://javascript.info/long-polling)
+<!DOCTYPE html>
+<html>
+<body>
+<p id='data' style='font-size: 50vw;'>%hhu</p>
+<script>
+async function subscribe() {
+  let response = await fetch('http://192.1.0.1/');
+  if (response.status == 502) {
+    await subscribe();
+  } else if (response.status != 200) {
+    document.getElementById('data').innerHTML = response.statusText;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    await subscribe();
+  } else {
+    let data = await response.text();
+    document.getElementById('data').innerHTML = data;
+    await subscribe();
+  }
+}
+subscribe();
+</script></body></html>
+// Version 4
+<!DOCTYPE html>
+<html>
+<style>
+    .pulse {
+        width: 10px;
+        background-color: #4CAF50;
+        display: inline-block;
+        margin: 5px;
+    }
+</style>
+<head>
+<title>HEARTMONITOR</title>
+<link rel='icon' href='data:,'>
+</head>
+<body>
+<div id='hr-pulses'></div>
+<div id='hr-calc-pulses'></div>
+<script>
+let updatePage = async () => {
+    let response = await fetch('http://%s:%s', {
+        method: 'GET',
+        headers: {
+      		'Accept': 'application/json',
+      		'Connection': 'close'
+	},
+    });
+    if(response.ok){
+        let ret = await response.json();
+        let hrPulse = document.createElement('div');
+        hrPulse.className = 'pulse';
+        hrPulse.style.height = ret.HR + 'px';
+        document.getElementById('hr-pulses').appendChild(hrPulse);
+
+        let hrCalcPulse = document.createElement('div');
+        hrCalcPulse.className = 'pulse';
+        hrCalcPulse.style.height = ret.HRCALC + 'px';
+        document.getElementById('hr-calc-pulses').appendChild(hrCalcPulse);
+    }
+    else {
+        console.error('HTTP error: ' + response.status);
+    }
+    setTimout(updatePage, 1000);
+};
+setInterval(updatePage, 2000);
+</script></body></html>
+// Version 5
+<!DOCTYPE html>
+<html>
+<style>
+    .pulse {
+        width: 10px;
+        background-color: #4CAF50;
+        display: inline-block;
+        margin: 5px;
+    }
+</style>
+<head>
+<title>HEARTMONITOR</title>
+<link rel='icon' href='data:,'>
+</head>
+<body>
+<div id='hr-pulses'></div>
+<div id='hr-calc-pulses'></div>
+</body>
+<script>
+const TIMEOUT = 2000;
+let updatePage = async () => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+    setTimeout(() => controller.abort(), TIMEOUT);
+
+    try {
+        let response = await fetch('http://%s:%s', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            },
+            signal
+        });
+
+        if(response.ok){
+            let ret = await response.json();
+            let hrPulse = document.createElement('div');
+            hrPulse.className = 'pulse';
+            hrPulse.style.height = ret.HR + 'px';
+            document.getElementById('hr-pulses').appendChild(hrPulse);
+            let hrCalcPulse = document.createElement('div');
+            hrCalcPulse.className = 'pulse';
+            hrCalcPulse.style.height = ret.HRCALC + 'px';
+            document.getElementById('hr-calc-pulses').appendChild(hrCalcPulse);
+        }
+        else {
+            console.error('HTTP error: ' + response.status);
+        }
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log('Fetch aborted');
+        } else {
+            console.error('Fetch error: ', error);
+        }
+    }
+};
+setInterval(updatePage, TIMEOUT);
+</script></body></html>
+// Version 6
+<!DOCTYPE html>
+<html>
+<head>
+<title>HEARTMONITOR</title>
+<link rel='icon' href='data:,'>
+<style>
+.bar {
+    width: 5px;
+    display: inline-block;
+    background-color: #4CAF50
+    margin: 5px;
+}
+#container-hr {
+    background-color: lightgreen;
+}
+#container-hr-calc {
+    background-color: lightblue;
+}
+</style>
+</head>
+<body>
+<button id='start-stop-btn'>Start</button>
+<h3 id='hr-header'>HR:</h3>
+<div id='container-hr'></div>
+<h3 id='hr-calc-header'>HRCALC:</h3>
+<div id='container-hr-calc'></div>
+<script>
+	let hrValues = [];
+	let hrCalcValues = [];
+	const TIMEOUT = 2000;
+	let maxValues = window.innerWidth / 5;
+	let containerHR = document.getElementById('container-hr');
+	let containerHRCalc = document.getElementById('container-hr-calc');
+	let hrHeader = document.getElementById('hr-header');
+	let hrCalcHeader = document.getElementById('hr-calc-header');
+
+	let createBar = (value, container) => {
+	    let bar = document.createElement('div');
+	    bar.className = 'bar';
+	    bar.style.height = value + 'px';
+	    bar.textContent = value;
+	    container.appendChild(bar);
+	};
+
+	let updatePage = async () => {
+	    let controller = new AbortController();
+	    let signal = controller.signal;
+	    setTimeout(() => controller.abort(), TIMEOUT);
+	    
+	    let response = await fetch('http://%s:%s', {
+		method: 'GET',
+		headers: {
+	      		'Accept': 'application/json'
+		    },
+		signal
+	    });
+	    if(response.ok){
+		let ret = await response.json();
+		hrValues.push(ret.HR);
+		hrCalcValues.push(ret.HRCALC);
+		while (hrValues.length > maxValues) {
+		    hrValues.shift();
+		}
+		while (hrCalcValues.length > maxValues) {
+		    hrCalcValues.shift();
+		}
+		containerHR.innerHTML = '';
+		containerHRCalc.innerHTML = '';
+		hrValues.forEach((value, index) => {
+		    createBar(value, containerHR);
+		});
+		hrCalcValues.forEach((value, index) => {
+		    createBar(value, containerHRCalc);
+		});
+		hrHeader.innerHTML = 'HR: ' + ret.HR;
+		hrCalcHeader.innerHTML = 'HRCALC: ' + ret.HRCALC;
+	    }
+	    else {
+		console.error('HTTP error: ' + response.status);
+	    }
+	};
+startStopBtn.onclick = function() {
+    if (startStopBtn.innerText == 'Start') {
+        pollingInterval = setInterval(updatePage, TIMEOUT);
+        startStopBtn.innerText = 'Stop';
+    } else {
+        clearInterval(pollingInterval);
+        startStopBtn.innerText = 'Start';
+    }
+};
+</script></body></html>
+// Version 7 (shortened)
+<!DOCTYPE html><html><head><title>HEARTMONITOR</title><link rel='icon' href='data:,'><style>.bar{min-width:20px;display:inline-block;margin:5px;background-color: #4CAF50}#c-hr,#c-hr-c{background-color:lightgreen;}</style></head><body><button id='b'>Start</button><h3 id='hr'>HR:</h3><div id='c-hr'></div><h3 id='hr-c'>HRCALC:</h3><div id='c-hr-c'></div><script>let h=[],hc=[],T=2000,max=window.innerWidth/5,cHR=document.getElementById('c-hr'),cHRC=document.getElementById('c-hr-c'),hr=document.getElementById('hr'),hrC=document.getElementById('hr-c'),createBar=(v,c)=>{let b=document.createElement('div');b.className='bar';b.style.height=v+'px';b.textContent=v;c.appendChild(b);},updatePage=async()=>{let C=new AbortController(),S=C.signal;setTimeout(()=>C.abort(),T);let R=await fetch('http://%s:%s',{method:'GET',headers:{'Accept':'application/json'},S});if(R.ok){let r=await R.json();h.push(r.HR);hc.push(r.HRCALC);while(h.length>max){h.shift();}while(hc.length>max){hc.shift();}cHR.innerHTML='';cHRC.innerHTML='';h.forEach((v,i)=>{createBar(v,cHR);});hc.forEach((v,i)=>{createBar(v,cHRC);});hr.innerHTML='HR: '+r.HR;hrC.innerHTML='HRCALC: '+r.HRCALC;}else{console.error('HTTP error: '+R.status);}};b.onclick=()=>{if(b.innerText=='Start'){pollingInterval=setInterval(updatePage,T);b.innerText='Stop';}else{clearInterval(pollingInterval);b.innerText='Start';}};</script></body></html>
+

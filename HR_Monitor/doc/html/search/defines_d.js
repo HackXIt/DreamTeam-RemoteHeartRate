@@ -1,0 +1,28 @@
+var searchData=
+[
+  ['sample_5fsize_849',['SAMPLE_SIZE',['../max30101_8h.html#ae25e0da7cdb20c758a56dc6aece92ba7',1,'max30101.h']]],
+  ['setup_5fdelay_850',['SETUP_DELAY',['../max30101_8h.html#a9e9afb21f28231689fd0c72416e0c6de',1,'max30101.h']]],
+  ['slave_5fid_851',['SLAVE_ID',['../max30101_8h.html#aed258e18fa2ea561f21f58d651a33cff',1,'max30101.h']]],
+  ['spo2_5fadc_5frge_5f00_852',['SPO2_ADC_RGE_00',['../max30101_8h.html#aadf08b275982d76b7d00ec7253ffea83',1,'max30101.h']]],
+  ['spo2_5fadc_5frge_5f01_853',['SPO2_ADC_RGE_01',['../max30101_8h.html#a0f735b21cf259627c57316b573ea01e4',1,'max30101.h']]],
+  ['spo2_5fadc_5frge_5f02_854',['SPO2_ADC_RGE_02',['../max30101_8h.html#a31157e664fdc83289f8f80040286e310',1,'max30101.h']]],
+  ['spo2_5fadc_5frge_5f03_855',['SPO2_ADC_RGE_03',['../max30101_8h.html#a544de6210626344c74e3e3e60d112cc6',1,'max30101.h']]],
+  ['spo2_5fconfig_856',['SPO2_CONFIG',['../max30101_8h.html#a088c88c3c5bd0d09efc6f64816c16ba1',1,'max30101.h']]],
+  ['spo2_5fled_5fpw118_857',['SPO2_LED_PW118',['../max30101_8h.html#ad17573cda3d90465f1595b0ebc5721ab',1,'max30101.h']]],
+  ['spo2_5fled_5fpw215_858',['SPO2_LED_PW215',['../max30101_8h.html#a57211fac6366829ed719f2b7b56b6895',1,'max30101.h']]],
+  ['spo2_5fled_5fpw411_859',['SPO2_LED_PW411',['../max30101_8h.html#ac00116ab70c9b5772d01974e5faddecf',1,'max30101.h']]],
+  ['spo2_5fled_5fpw69_860',['SPO2_LED_PW69',['../max30101_8h.html#aadb32c943f90c5fd2c898f2ddaf55dc3',1,'max30101.h']]],
+  ['spo2_5fsr_5f100_861',['SPO2_SR_100',['../max30101_8h.html#a83fd293c07e3d179b793a19ba24773b0',1,'max30101.h']]],
+  ['spo2_5fsr_5f1000_862',['SPO2_SR_1000',['../max30101_8h.html#ac573326a28478e5301fe4eacd9056832',1,'max30101.h']]],
+  ['spo2_5fsr_5f1600_863',['SPO2_SR_1600',['../max30101_8h.html#a1d54760817370b55f597ba78c50fb3ac',1,'max30101.h']]],
+  ['spo2_5fsr_5f200_864',['SPO2_SR_200',['../max30101_8h.html#ae8a7496c07f19885b7edaebec4e14454',1,'max30101.h']]],
+  ['spo2_5fsr_5f3200_865',['SPO2_SR_3200',['../max30101_8h.html#a73afa550227a1ffeba491a6dfade0a17',1,'max30101.h']]],
+  ['spo2_5fsr_5f400_866',['SPO2_SR_400',['../max30101_8h.html#ae3ffd226e6c49ad7d91e859cb9e61e36',1,'max30101.h']]],
+  ['spo2_5fsr_5f50_867',['SPO2_SR_50',['../max30101_8h.html#a157a65e5f7f1a950ada9d3319bcb5a07',1,'max30101.h']]],
+  ['spo2_5fsr_5f800_868',['SPO2_SR_800',['../max30101_8h.html#a1e9a428e28f752b6cc1c20d674d60bd6',1,'max30101.h']]],
+  ['support_5fmsvc_5fstyle_5finteger_5fspecifiers_869',['SUPPORT_MSVC_STYLE_INTEGER_SPECIFIERS',['../printf__config_8h.html#aee468c34428dd83edc77ba8784cefb2a',1,'printf_config.h']]],
+  ['swclk_5fgpio_5fport_870',['SWCLK_GPIO_Port',['../main_8h.html#a54d419ccaa2653d1bceae3f1a7206890',1,'main.h']]],
+  ['swclk_5fpin_871',['SWCLK_Pin',['../main_8h.html#ad2e9165c92edc48968db01ca88c27822',1,'main.h']]],
+  ['swdio_5fgpio_5fport_872',['SWDIO_GPIO_Port',['../main_8h.html#a0d6c5c9d267a552e5bb02eb57498f683',1,'main.h']]],
+  ['swdio_5fpin_873',['SWDIO_Pin',['../main_8h.html#ac30893c7c5dd78cf02632dc653c3e74e',1,'main.h']]]
+];

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<body>
+<p id='data' style='font-size: 50vw;'>%hhu</p>
+<script>
+async function subscribe() {
+  let response = await fetch('http://192.1.0.1/');
+  if (response.status == 502) {
+    await subscribe();
+  } else if (response.status != 200) {
+    document.getElementById('data').innerHTML = response.statusText;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    await subscribe();
+  } else {
+    let data = await response.text();
+    document.getElementById('data').innerHTML = data;
+    await subscribe();
+  }
+}
+subscribe();
+</script></body></html>

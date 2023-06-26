@@ -1,0 +1,26 @@
+var group___t_i_m_ex___remap =
+[
+    [ "TIM_TIM15_ENCODERMODE_NONE", "group___t_i_m_ex___remap.html#ga28e4df243cb5161ef41577b1e4eda287", null ],
+    [ "TIM_TIM15_ENCODERMODE_TIM2", "group___t_i_m_ex___remap.html#gaa0cd332dff3d142d4c8e99ce5051cfc8", null ],
+    [ "TIM_TIM15_TI1_GPIO", "group___t_i_m_ex___remap.html#ga203fd51591dbc76d09a12d1ca4e539a1", null ],
+    [ "TIM_TIM15_TI1_LSE", "group___t_i_m_ex___remap.html#gaa4c2e53cddd14314fdebbd630ce8298d", null ],
+    [ "TIM_TIM16_TI1_GPIO", "group___t_i_m_ex___remap.html#gaf4435f9a5d0eb16d1b2b1192ad004392", null ],
+    [ "TIM_TIM16_TI1_LSE", "group___t_i_m_ex___remap.html#gabff23fbb0cd0a7f09de517b0469038b0", null ],
+    [ "TIM_TIM16_TI1_LSI", "group___t_i_m_ex___remap.html#ga671abe85f9feb1fcee7c2bf05e9245cd", null ],
+    [ "TIM_TIM16_TI1_RTC", "group___t_i_m_ex___remap.html#ga23533444072953152f7e9600db5437a6", null ],
+    [ "TIM_TIM1_ETR_ADC1_AWD1", "group___t_i_m_ex___remap.html#gaa5a7accd83b70cbaf790bd26fd8e4538", null ],
+    [ "TIM_TIM1_ETR_ADC1_AWD2", "group___t_i_m_ex___remap.html#ga4ee5007933efeaae07c745062ffc2776", null ],
+    [ "TIM_TIM1_ETR_ADC1_AWD3", "group___t_i_m_ex___remap.html#ga6a448a71300d1f8f81e6eb0dcc31f15a", null ],
+    [ "TIM_TIM1_ETR_ADC1_NONE", "group___t_i_m_ex___remap.html#gae75587fbc90e0c2b17273d0a9f2ad05c", null ],
+    [ "TIM_TIM1_ETR_COMP1", "group___t_i_m_ex___remap.html#ga2e3eb3f4f99db6c14b3ce91bebfe8d07", null ],
+    [ "TIM_TIM1_ETR_GPIO", "group___t_i_m_ex___remap.html#ga5156e463b51b1a7d92e6d87c2be4563a", null ],
+    [ "TIM_TIM1_TI1_COMP1", "group___t_i_m_ex___remap.html#gabba4a562a6e0f83acf57807e50de0de4", null ],
+    [ "TIM_TIM1_TI1_GPIO", "group___t_i_m_ex___remap.html#ga4d3d7a7e977f98110d2833d2feb7236a", null ],
+    [ "TIM_TIM2_ETR_COMP1", "group___t_i_m_ex___remap.html#ga79a125bc7559dc01f8de056e19f11972", null ],
+    [ "TIM_TIM2_ETR_GPIO", "group___t_i_m_ex___remap.html#ga05e1c800a3f8e7eb60b50f446cf321f7", null ],
+    [ "TIM_TIM2_ETR_LSE", "group___t_i_m_ex___remap.html#ga906f5f281fa8283e5574b5ec7cb95b62", null ],
+    [ "TIM_TIM2_ITR1_NONE", "group___t_i_m_ex___remap.html#ga47b5879b01ba620291663c931486d40c", null ],
+    [ "TIM_TIM2_ITR1_USB_SOF", "group___t_i_m_ex___remap.html#ga8fccb3e45c4107118ec4bd8ae45bd42f", null ],
+    [ "TIM_TIM2_TI4_COMP1", "group___t_i_m_ex___remap.html#ga10665a31da680e9c23ff66b4e9f85b1e", null ],
+    [ "TIM_TIM2_TI4_GPIO", "group___t_i_m_ex___remap.html#ga11cd0b8d94b5ab46488aa3f2c3769d1f", null ]
+];
