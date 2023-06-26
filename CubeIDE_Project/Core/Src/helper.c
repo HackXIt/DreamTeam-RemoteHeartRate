@@ -112,9 +112,11 @@ void translate_I2C_Error(I2C_HandleTypeDef *hi2c) {
 		break;
 	case HAL_I2C_ERROR_BERR:
 		printf_("BERR error");
+		LL_I2C_ClearFlag_BERR(hi2c->Instance);
 		break;
 	case HAL_I2C_ERROR_ARLO:
 		printf_("ARLO error");
+		LL_I2C_ClearFlag_ARLO(hi2c->Instance);
 		break;
 	case HAL_I2C_ERROR_AF:
 		printf_("ACKF error");
@@ -132,10 +134,12 @@ void translate_I2C_Error(I2C_HandleTypeDef *hi2c) {
 		printf_("Size Management error");
 		break;
 	case HAL_I2C_ERROR_DMA_PARAM:
-		printf_("DMA Parameter Error");
+		printf_("DMA Parameter error");
 		break;
 	default:
-		printf_("Unknown I2C Error");
+		printf_("Multiple I2C errors");
+		if(error_value & HAL_I2C_ERROR_BERR) LL_I2C_ClearFlag_BERR(hi2c->Instance);
+		if(error_value & HAL_I2C_ERROR_ARLO) LL_I2C_ClearFlag_ARLO(hi2c->Instance);
 		break;
 	}
 	printf_(" (0x%08lx)\r\n", error_value);
@@ -167,19 +171,11 @@ void translate_UART_Error(UART_HandleTypeDef *huart) {
 		printf_("Receiver Timeout error");
 		break;
 	default:
-		printf_("Unknown UART Error");
+		printf_("Multiple UART errors");
 		break;
 	}
 	printf_(" (0x%08lx)\r\n", error_value);
 }
-
-#define  HAL_UART_ERROR_NONE             (0x00000000U)    /*!< No error                */
-#define  HAL_UART_ERROR_PE               (0x00000001U)    /*!< Parity error            */
-#define  HAL_UART_ERROR_NE               (0x00000002U)    /*!< Noise error             */
-#define  HAL_UART_ERROR_FE               (0x00000004U)    /*!< Frame error             */
-#define  HAL_UART_ERROR_ORE              (0x00000008U)    /*!< Overrun error           */
-#define  HAL_UART_ERROR_DMA              (0x00000010U)    /*!< DMA transfer error      */
-#define  HAL_UART_ERROR_RTO              (0x00000020U)    /*!< Receiver Timeout error  */
 
 void printDebug(const char *msg) {
 #ifdef DEBUG

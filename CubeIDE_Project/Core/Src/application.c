@@ -54,11 +54,11 @@ const char *HTTP_CONTENT_TYPE_JSON = "Content-type: application/json\r\n";
 const char *HTTP_CONTENT_LENGTH_TEMPLATE = "Content-Length: %hu\r\nCache-Control: no-cache, must-revalidate\r\n\r\n";
 #ifdef WIFIBLE_USE_WEBSOCKET
 // 212 characters without placeholders
-const char *HTML_TEMPLATE = "<!DOCTYPE html><html><body><p id='data' style='font-size: 50vw;'>%hhu</p><script>var ws = new WebSocket('ws://%s:%s');ws.onmessage = function(event) {var dataElement = document.getElementById('data');dataElement.innerHTML = event.data;};</script></body></html>";
+const char *HTML_TEMPLATE = "<!DOCTYPE html><html><body><p id='hr' style='font-size: 72px;'>%hhu</p><p id='hr-calc' style='font-size: 72px;'>%hhu</p><script>var ws = new WebSocket('ws://%s:%s');ws.onmessage = function(event) {var dataElement = document.getElementById('data');dataElement.innerHTML = event.data;};</script></body></html>";
 #endif
 #ifndef WIFIBLE_USE_WEBSOCKET
-// 378 characters without placeholders
-const char *HTML_TEMPLATE = "<!DOCTYPE html><html><head><title>HEARTMONITOR</title><link rel='icon' href='data:,'></head><body><p id='data' style='font-size: 10vw;'>%hhu</p><script>let updatePage = async () => { let response = await fetch('http://%s:%s', { method: 'GET', headers: { 'Accept': 'application/json'}, }); if(response.ok){ let ret = await response.json(); document.getElementById('data').innerText = ret.DATA; } else { console.error('HTTP error: ' + response.status); }};setInterval(updatePage, 2000);</script></body></html>";
+// 1386 characters without placeholders
+const char *HTML_TEMPLATE = "<!DOCTYPE html><html><head><title>HEARTMONITOR</title><link rel='icon' href='data:,'><style>.bar{min-width:20px;display:inline-block;margin:5px;background-color: #4CAF50}#c-hr,#c-hr-c{background-color:lightgreen;}</style></head><body><button id='b'>Start</button><h3 id='hr'>HR:</h3><div id='c-hr'></div><h3 id='hr-c'>HRCALC:</h3><div id='c-hr-c'></div><script>let h=[],hc=[],T=2000,max=window.innerWidth/5,cHR=document.getElementById('c-hr'),cHRC=document.getElementById('c-hr-c'),hr=document.getElementById('hr'),hrC=document.getElementById('hr-c'),createBar=(v,c)=>{let b=document.createElement('div');b.className='bar';b.style.height=v+'px';b.textContent=v;c.appendChild(b);},updatePage=async()=>{let C=new AbortController(),S=C.signal;setTimeout(()=>C.abort(),T);let R=await fetch('http://%s:%s',{method:'GET',headers:{'Accept':'application/json'},S});if(R.ok){let r=await R.json();h.push(r.HR);hc.push(r.HRCALC);while(h.length>max){h.shift();}while(hc.length>max){hc.shift();}cHR.innerHTML='';cHRC.innerHTML='';h.forEach((v,i)=>{createBar(v,cHR);});hc.forEach((v,i)=>{createBar(v,cHRC);});hr.innerHTML='HR: '+r.HR;hrC.innerHTML='HRCALC: '+r.HRCALC;}else{console.error('HTTP error: '+R.status);}};b.onclick=()=>{if(b.innerText=='Start'){pollingInterval=setInterval(updatePage,T);b.innerText='Stop';}else{clearInterval(pollingInterval);b.innerText='Start';}};</script></body></html>";
 #endif
 
 
@@ -88,8 +88,11 @@ uint8_t responseLink = 0;
 uint8_t requestType = 0;
 #ifndef USE_WEBSERVER
 uint8_t clients[4] = {0};
-char page[1024] = {0};
-char response[1024] = {0};
+char update[MAX_UPDATE_SIZE] = {0};
+char update_response[MAX_UPDATE_SIZE] = {0};
+char page[MAX_PAGE_SIZE] = {0};
+char page_response[MAX_PAGE_SIZE] = {0};
+uint16_t page_response_length = 0;
 #endif
 
 // ------------------------------------------------------------ CONSOLE MODULE

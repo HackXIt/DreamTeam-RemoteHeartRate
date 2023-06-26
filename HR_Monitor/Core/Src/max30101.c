@@ -8,6 +8,7 @@
 #include "max30101.h"
 #include "stm32l4xx_hal.h"
 #include "printf.h"
+#include "stm32l4xx_ll_i2c.h" // for LowLevel driver
 
 
 /*--- MACROS ---*/
@@ -24,15 +25,18 @@
 void translate_I2C_Error(I2C_HandleTypeDef *hi2c) {
 	uint32_t error_value = HAL_I2C_GetError(hi2c);
 	printf_("I2C: ");
+	// NOTE: Some errors need to be cleared by software
 	switch(error_value) {
 	case HAL_I2C_ERROR_NONE:
 		printf_("No error");
 		break;
 	case HAL_I2C_ERROR_BERR:
 		printf_("BERR error");
+		LL_I2C_ClearFlag_BERR(hi2c->Instance);
 		break;
 	case HAL_I2C_ERROR_ARLO:
 		printf_("ARLO error");
+		LL_I2C_ClearFlag_ARLO(hi2c->Instance);
 		break;
 	case HAL_I2C_ERROR_AF:
 		printf_("ACKF error");
@@ -50,10 +54,12 @@ void translate_I2C_Error(I2C_HandleTypeDef *hi2c) {
 		printf_("Size Management error");
 		break;
 	case HAL_I2C_ERROR_DMA_PARAM:
-		printf_("DMA Parameter Error");
+		printf_("DMA Parameter error");
 		break;
 	default:
-		printf_("Unknown I2C Error");
+		printf_("Multiple I2C errors");
+		if(error_value & HAL_I2C_ERROR_BERR) LL_I2C_ClearFlag_BERR(hi2c->Instance);
+		if(error_value & HAL_I2C_ERROR_ARLO) LL_I2C_ClearFlag_ARLO(hi2c->Instance);
 		break;
 	}
 	printf_(" (0x%08lx)\r\n", error_value);

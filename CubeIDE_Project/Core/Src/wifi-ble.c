@@ -7,6 +7,8 @@
 
 #include "wifi-ble.h"
 
+//#define WIFIBLE_DEBUG
+
 // ------------------------------------------------------------ STATIC variables
 // (configured in application.c)
 extern const char *newLine;
@@ -34,11 +36,12 @@ extern uint8_t heartrate_read_index;
 extern uint8_t clients[4];
 extern uint8_t requestType;
 #ifndef USE_WEBSERVER
-extern char page[1024];
-extern char response[1024];
+extern char update[MAX_UPDATE_SIZE];
+extern char update_response[MAX_UPDATE_SIZE];
+extern char page[MAX_PAGE_SIZE];
+extern char page_response[MAX_PAGE_SIZE];
+extern uint16_t page_response_length;
 #endif
-
-//#define WIFIBLE_DEBUG
 
 /*
 const char *ip_address;
@@ -68,6 +71,8 @@ void HAL_UART_AbortReceiveCpltCallback(UART_HandleTypeDef *huart) {
 		*/
 	}
 }
+
+
 
 // ------------------------------------------------------------ TASKS
 
@@ -191,6 +196,16 @@ wifible_wifi_cfg_t* wifible_wifi_default_cfg() {
 	config->domain = pvPortMalloc(sizeof(char)*strlen(default_cfg.domain)+1);
 	sprintf_(config->domain, "%s", default_cfg.domain);
 	config->mode = SoftAP;
+
+	// Setup HTTP response variables
+	char header[128] = {0};
+	sprintf_(header, "%s%s", HTTP_HEADER, HTTP_CONTENT_TYPE_HTML);
+	uint16_t header_length = strlen(header);
+	sprintf_(page, HTML_TEMPLATE, config->local_ip, "80");
+	uint16_t page_length = strlen(page);
+	sprintf_(header+header_length, HTTP_CONTENT_LENGTH_TEMPLATE, page_length);
+	sprintf_(page_response, "%s%s", header, page);
+	page_response_length = strlen(page_response);
 	return config;
 }
 
@@ -288,7 +303,9 @@ WIFIBLE_RETVAL wifible_power_module(uint8_t power_state) {
 
 WIFIBLE_RETVAL wifible_handle_newData(size_t old_pos, size_t new_pos) {
 	size_t length;
+#ifdef WIFIBLE_DEBUG
 	HAL_StatusTypeDef ret;
+#endif
 	// The transmissions here are in blocking mode, otherwise output is cutoff!
 	// If received data is BIGGER than buffer size, then output will be cutoff! (=> Increase buffer size)
 	// The function does not abort on transmission error, but will abort on copy-error
@@ -440,76 +457,76 @@ WIFIBLE_RETVAL wifible_handle_newRequest() {
 		heartrate_read_index = 0;
 	}
 	*/
-	uint8_t data = heartrate_ram[0];
-	printf_("WIFIBLE: HEARTRATE=%hhu%s", data, newLine);
-	wifible_return = wifible_serve_webPage(responseLink, data);
+	wifible_return = wifible_serve_webPage(responseLink);
 	return wifible_return;
 }
 
-WIFIBLE_RETVAL wifible_serve_webPage(uint8_t link_id, uint8_t data) {
+WIFIBLE_RETVAL wifible_serve_webPage(uint8_t link_id) {
 	char at_cmd_buf[AT_CMD_BUFFER_SIZE] = {0};
+	uint8_t heartrate = heartrate_ram[0];
+	uint8_t heartrate_calc = heartrate_ram[1];
 
 	if(requestType == JSON_REQUEST) {
-		char header[64] = {0};
+		char header[128] = {0};
 		sprintf_(header, "%s%s", HTTP_HEADER, HTTP_CONTENT_TYPE_JSON);
 		uint16_t header_length = strlen(header);
-		sprintf_(page, "{\"DATA\":\"%hhu\"}\r\n", data);
-		uint16_t page_length = strlen(page);
-		sprintf_(header+header_length, HTTP_CONTENT_LENGTH_TEMPLATE, page_length);
-		sprintf_(response, "%s%s", header, page);
-		uint16_t response_length = strlen(response);
-		at_set_command(at_cmd_buf, wifible_send_command, AT_IP_Send, "%hhu,%hu", link_id, response_length);
+		sprintf_(update, "{\"HR\":%u,\"HRCALC\":%u}%s", heartrate, heartrate_calc, newLine);
+		printf_("WIFIBLE: %s", update);
+		uint16_t update_length = strlen(update);
+		sprintf_(header+header_length, HTTP_CONTENT_LENGTH_TEMPLATE, update_length);
+		sprintf_(update_response, "%s%s", header, update);
+		uint16_t update_response_length = strlen(update_response);
+		at_set_command(at_cmd_buf, wifible_send_command, AT_IP_Send, "%hhu,%hu", link_id, update_response_length);
 		osDelay(WIFIBLE_CMD_DELAY);
-		HAL_StatusTypeDef hal_return = HAL_UART_Transmit(&huart1, (uint8_t*)response, response_length, HAL_MAX_DELAY);
+		HAL_StatusTypeDef hal_return = HAL_UART_Transmit_DMA(&huart1, (uint8_t*)update_response, update_response_length);
 		if(halStatusHandler(hal_return)) {
 			printf_("WIFIBLE: error serving webpage: ");
 			translate_UART_Error(&huart1);
 			return WIFIBLE_RW_ERROR;
 		}
 	} else {
-		clients[link_id] = CLIENT_2ND_CONNECT;
-		char header[64] = {0};
-		sprintf_(header, "%s%s", HTTP_HEADER, HTTP_CONTENT_TYPE_HTML);
-		uint16_t header_length = strlen(header);
-		sprintf_(page, HTML_TEMPLATE, data, "192.1.0.1", "80"); // 227 characters assuming number 1234
-		uint16_t page_length = strlen(page);
-		sprintf_(header+header_length, HTTP_CONTENT_LENGTH_TEMPLATE, page_length);
-		sprintf_(response, "%s%s", header, page);
-		uint16_t response_length = strlen(response);
-		at_set_command(at_cmd_buf, wifible_send_command, AT_IP_Send, "%hhu,%hu", link_id, response_length);
+		// Start Send command
+		at_set_command(at_cmd_buf, wifible_send_command, AT_IP_Send, "%hhu,%hu", link_id, page_response_length);
 		osDelay(WIFIBLE_CMD_DELAY);
-		HAL_StatusTypeDef hal_return = HAL_UART_Transmit(&huart1, (uint8_t*)response, response_length, HAL_MAX_DELAY);
+		// Send data
+		HAL_StatusTypeDef hal_return = HAL_UART_Transmit_DMA(&huart1, (uint8_t*)page_response, page_response_length);
 		if(halStatusHandler(hal_return)) {
 			printf_("WIFIBLE: error serving webpage: ");
 			translate_UART_Error(&huart1);
 			return WIFIBLE_RW_ERROR;
 		}
 #ifdef WIFIBLE_DEBUG
-		printf_("WIFIBLE: Sent:%s%s%s", newLine, response, newLine);
+		printf_("WIFIBLE: Sent:%s%s%s", newLine, page_response, newLine);
 #endif
 	}
+	// Wait until TC flag is set
+	while(!(huart1.Instance->ISR & USART_ISR_TC));
+	// Just close all the connections
+	at_set_command(at_cmd_buf, wifible_send_command, AT_IP_CloseConnection, "%hhu", 5);
 	osDelay(WIFIBLE_CMD_DELAY);
-	at_set_command(at_cmd_buf, wifible_send_command, AT_IP_CloseConnection, "%hhu", link_id);
-	osDelay(WIFIBLE_CMD_DELAY);
-	memset(page, 0, 1024); // Reset page buffer
-	memset(response, 0, 1024); // reset response buffer
 	return WIFIBLE_OK;
 }
 
 void wifible_send_command(char *command, int length) {
-	HAL_StatusTypeDef ret = HAL_UART_Transmit(&huart1, (uint8_t*)command, length, HAL_MAX_DELAY);
+	HAL_StatusTypeDef ret = HAL_UART_Transmit_DMA(&huart1, (uint8_t*)command, length);
 	if(halStatusHandler(ret)) {
 		printf_("WIFIBLE: error sending command: %s%s", command, newLine);
 		translate_UART_Error(&huart1);
 	}
+	// Wait until TC flag is set
+	while(!(huart1.Instance->ISR & USART_ISR_TC));
 }
 
 void wifible_uart_receive_callback(UART_HandleTypeDef *huart) {
+#ifdef WIFIBLE_DEUBG
 	printf_("WIFIBLE: UART callback%s", newLine);
+#endif
 }
 
 void wifible_dma_receive_callback(DMA_HandleTypeDef *hdma) {
+#ifdef WIFIBLE_DEUBG
 	printf_("WIFIBLE: DMA callback%s", newLine);
+#endif
 }
 
 WIFIBLE_RETVAL wifible_prep_peripherals() {

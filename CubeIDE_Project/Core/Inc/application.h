@@ -27,6 +27,8 @@
 // Application macros
 #define MODULE_INIT_SIZE		256
 #define MODULE_SEM_TIMEOUT		1000U
+#define MAX_PAGE_SIZE			2048U
+#define MAX_UPDATE_SIZE			128U
 #define MESSAGE_SEMAPHORE		"Message"
 #define MESSAGE_MAX_COUNT		1U
 #define MESSAGE_INIT_COUNT		1U
@@ -45,7 +47,7 @@
 #define SEMAPHORE_FAILURE		0x02
 // Client macros
 #define CLIENT_CLOSED			0x00
-#define CLIENT_1ST_CONNECT		0xC1
+#define CLIENT_CONNECTED		0xC1
 #define CLIENT_2ND_CONNECT		0xC2
 #define CLIENT_FAILED			0xC4
 // Request macros
@@ -82,9 +84,23 @@
 #define IDLE_EVENT		(1 << 16)
 #define COPY_REATTEMPT	(1 << 17)
 #define I2C_EVENT		(1 << 18)
+#define USART1_READY	(1 << 19)
 
 // ------------------------------------------------------------ Application wide functions
+/**
+ * @brief Attempts to acquire a semaphore with the given timeout
+ *
+ * @param semaphore ... id of semaphore to get
+ * @param timeout ... will return after specified timeout
+ * @return SEMAPHORE_FAILURE on any osFailure and APPLICATION_OK on success
+ */
 APPLICATION_RETVAL acquire_semaphore(osSemaphoreId_t semaphore, uint32_t timeout);
+/**
+ * @brief Attempts to release a semaphore
+ *
+ * @param semaphore ... id of semaphore to release
+ * @return SEMAPHORE_FAILURE on any osFailure and APPLICATION_OK on success
+ */
 APPLICATION_RETVAL release_semaphore(osSemaphoreId_t semaphore);
 
 #endif /* INC_APPLICATION_H_ */

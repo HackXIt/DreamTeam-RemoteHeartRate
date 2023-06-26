@@ -25,7 +25,7 @@
 // NOTE: I tried to pick hex-values that are memorable for the purpose
 // The highest 4 bits represent the category, the lower 4 bits represent the state
 // Module macros
-#define WIFIBLE_MODULE_STACK_SIZE			512
+#define WIFIBLE_MODULE_STACK_SIZE			2048
 #define WIFIBLE_MODULE_NAME					"WIFIBLE"
 #define WIFIBLE_MODULE_INIT_NAME			"WifiBleInit"
 #define WIFIBLE_RETVAL						uint8_t
@@ -102,7 +102,7 @@ WIFIBLE_RETVAL wifible_attempt_fullCopy(size_t start_pos, size_t length);
 WIFIBLE_RETVAL wifible_attempt_partialCopy(size_t start_pos, size_t len1, size_t len2);
 WIFIBLE_RETVAL wifible_handle_userInput();
 WIFIBLE_RETVAL wifible_handle_newRequest();
-WIFIBLE_RETVAL wifible_serve_webPage(uint8_t link_id, uint8_t data);
+WIFIBLE_RETVAL wifible_serve_webPage(uint8_t link_id);
 void wifible_send_command(char *command, int length);
 WIFIBLE_RETVAL wifible_prep_peripherals();
 bool wifible_failureHandler(WIFIBLE_RETVAL value);

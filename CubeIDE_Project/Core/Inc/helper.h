@@ -12,6 +12,9 @@
 #include "stdbool.h"
 #include "cmsis_os2.h"
 #include "printf.h"
+// LowLevel drivers
+#include "stm32l4xx_ll_usart.h"
+#include "stm32l4xx_ll_i2c.h"
 
 bool flagErrorHandler(uint32_t flag);
 bool threadErrorHandler(osThreadId_t id, char *msg);

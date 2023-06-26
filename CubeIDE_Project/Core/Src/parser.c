@@ -249,6 +249,7 @@ PARSER_RETVAL parser_parseMessage() {
 				line = strtok_r(NULL, newLine, &outer_saveptr);
 				if(strncmp(line, "Accept: ", 8) == 0) {
 					accept_header = line+8;
+					break;
 				}
 			} while(accept_header == NULL && line != NULL);
 #ifndef	USE_WEBSERVER
@@ -273,7 +274,7 @@ PARSER_RETVAL parser_parseMessage() {
 			char *event = strtok_r(NULL, ",", &inner_saveptr);
 			sscanf(link_id, "%hhu", &responseLink);
 			if(strcmp(event, "CONNECT") == 0) {
-				clients[responseLink] = CLIENT_1ST_CONNECT;
+				clients[responseLink] = CLIENT_CONNECTED;
 			} else if(strcmp(event, "CONNECT FAIL") == 0) {
 				clients[responseLink] = CLIENT_FAILED;
 			} else if(strcmp(event, "CLOSED") == 0) {

@@ -14,13 +14,27 @@
  * I just ended up using interrupt mode because it just works.
  */
 #define I2C_USING_INTERRUPTS
+
 /* NOTE: When programming alone, I needed to simulate data coming in.
- * This macro should not commented out on final project.
- * It just activates a timer interrupt, which periodically sends I2C data over from I2C3 to I2C1.
- * Of course, the pins must be wired appropriately. For me it worked great to simulate data and check my code.
+ * This macro MUST BE commented out on final project, since it breaks the application in production.
+ * The macro activates a timer interrupt, which periodically sends I2C data over from I2C3 to I2C1.
+ * Of course, the pins must be wired appropriately. For me it worked great to simulate data and verify my code.
+ * WARNING: Be aware, that data simulation ONLY WORKS FOR THIS MODULE.
+ * Due to the usage of USART1 TX/RX Pins for I2C1, the data simulation doesn't work in conjunction with other modules.
  */
 //#define I2C_DATA_SIMULATION
-//#define HRRECEIVE_DEBUG
+
+/* NOTE: This macro activates more verbose logging information on USART2
+ * Be aware, that due to the amount of logs transmitted, the performance of the application is affected badly.
+ * It is however very helpful for viewing this module's behaviour.
+ */
+//#define HRRECEIVER_DEBUG
+
+/* NOTE: This macro activates logging output upon an I2C_EVENT on USART2
+ * When this macro is activated, a change in the heartrate receiver RAM is printed on USART2.
+ * It is a secondary debug macro, which isn't necessary in production.
+ */
+//#define HRRECEIVER_OUTPUT_I2C_EVENT
 
 // ------------------------------------------------------------ STATIC variables
 // (configured in application.c)
@@ -31,7 +45,7 @@ extern osSemaphoreId_t i2cSem;
 extern uint8_t heartrate_ram[HEARTRATE_RAM_SIZE];
 extern uint8_t heartrate_rx_offset;
 osTimerId_t selfSendTimer;
-bool first = false;
+bool first = true;
 uint8_t newValue = 0;
 uint8_t selfAddress_write = (0x69 << 1);
 uint8_t selfAddress_read = (0x69 << 1) | 1;
@@ -41,10 +55,10 @@ uint8_t selfAddress_read = (0x69 << 1) | 1;
 #ifdef I2C_USING_INTERRUPTS
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode) {
 	HAL_StatusTypeDef hal_return;
-#ifdef HRRECEIVE_DEBUG
+#ifdef HRRECEIVER_DEBUG
 	printf_("ISR: AddrCallback %s%s", TransferDirection==I2C_DIRECTION_RECEIVE ? "RX" : "TX", newLine);
 #endif
-	hal_return = HAL_I2C_Slave_Seq_Receive_IT(hi2c, heartrate_ram, I2C_MEMADD_SIZE_8BIT, I2C_NEXT_FRAME);
+	hal_return = HAL_I2C_Slave_Seq_Receive_IT(hi2c, &heartrate_rx_offset, I2C_MEMADD_SIZE_8BIT, I2C_NEXT_FRAME);
 	if(halStatusHandler(hal_return)) {
 		printf_("HRRECEIVER: error in address callback: ");
 		translate_I2C_Error(hi2c);
@@ -70,13 +84,13 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 		hal_return = HAL_I2C_Slave_Seq_Transmit_IT(hi2c, &heartrate_ram[heartrate_rx_offset], I2C_MEMADD_SIZE_8BIT, I2C_NEXT_FRAME);
 	}
 	if(halStatusHandler(hal_return)) {
-		printf_("HRRECEIVER: error in address callback: ");
+		printf_("HRRECEIVER: eellurror in address callback: ");
 		translate_I2C_Error(hi2c);
 	}
 	*/
 }
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c) {
-#ifdef HRRECEIVE_DEBUG
+#ifdef HRRECEIVER_DEBUG
 	printf_("ISR: ListenCpltCallback (0x%08lx)%s", hi2c->Devaddress, newLine);
 #endif
 	HAL_StatusTypeDef hal_return = HAL_I2C_EnableListen_IT(hi2c); // slave is ready again
@@ -95,15 +109,31 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c) {
 }
 
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-#ifdef HRRECEIVE_DEBUG
+#ifdef HRRECEIVER_DEBUG
 	printf_("ISR: SlaveRxCpltCallback%s", newLine);
 #endif
-	HAL_I2C_Slave_Seq_Receive_IT(hi2c, heartrate_ram, I2C_MEMADD_SIZE_8BIT, I2C_NEXT_FRAME);
-	// Notify task about idle event
-	uint32_t ret = osThreadFlagsSet(hrReceiverThreadId, I2C_EVENT);
-	if(flagErrorHandler(ret)) {
-		printf_("ISR: thread flag error: 0x%08lx%s", ret, newLine);
+	if(first) {
+		first = false;
+		HAL_StatusTypeDef hal_return = HAL_I2C_Slave_Seq_Receive_IT(hi2c, &heartrate_ram[heartrate_rx_offset], I2C_MEMADD_SIZE_8BIT, I2C_NEXT_FRAME);
+		if(halStatusHandler(hal_return)) {
+			printf_("ISR: error in interrupt peripherals: ");
+			translate_I2C_Error(hi2c);
+		}
+	} else {
+		first = true;
+		// Notify task about idle event
+		uint32_t ret = osThreadFlagsSet(hrReceiverThreadId, I2C_EVENT);
+		if(flagErrorHandler(ret)) {
+			printf_("ISR: thread flag error: 0x%08lx%s", ret, newLine);
+		}
 	}
+	/*
+	HAL_StatusTypeDef hal_return = HAL_I2C_Slave_Seq_Receive_IT(hi2c, heartrate_ram, I2C_MEMADD_SIZE_8BIT, I2C_NEXT_FRAME);
+	if(halStatusHandler(hal_return)) {
+		printf_("ISR: error in interrupt peripherals: ");
+		translate_I2C_Error(hi2c);
+	}
+	*/
 	/*
 	if(hi2c->Instance == I2C3) {
 	  // Notify task about idle event
@@ -137,7 +167,7 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-#ifdef HRRECEIVE_DEBUG
+#ifdef HRRECEIVER_DEBUG
 	printf_("ISR: SlaveTxCpltCallback%s", newLine );
 #endif
 	/*
@@ -157,22 +187,22 @@ void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c)
 
 #ifndef I2C_USING_INTERRUPTS
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode) {
-#ifdef HRRECEIVE_DEBUG
+#ifdef HRRECEIVER_DEBUG
 	printf_("ISR: HAL_I2C_AddrCallback%s", newLine);
 #endif
 }
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c) {
-#ifdef HRRECEIVE_DEBUG
+#ifdef HRRECEIVER_DEBUG
 	printf_("ISR: HAL_I2C_ListenCpltCallback%s", newLine);
 #endif
 }
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c) {
-#ifdef HRRECEIVE_DEBUG
+#ifdef HRRECEIVER_DEBUG
 	printf_("ISR: HAL_I2C_SlaveTxCpltCallback%s", newLine);
 #endif
 }
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-#ifdef HRRECEIVE_DEBUG
+#ifdef HRRECEIVER_DEBUG
 	printf_("ISR: HAL_I2C_SlaveRxCpltCallback%s", newLine);
 #endif
 }
@@ -233,13 +263,13 @@ void HrReceiver(void *argument) {
 // Private functions used in tasks
 HRRECEIVER_RETVAL hrReceiver_handle_heartrate() {
 	//release_semaphore(i2cSem);
-//#ifdef HRRECEIVE_DEBUG
+#ifdef HRRECEIVER_OUTPUT_I2C_EVENT
 	printf_("HRRECEIVER: I2C Event:%s", newLine);
 	for(uint8_t i = 0; i < HEARTRATE_RAM_SIZE; i++) {
 		printf_("[%hhu]:%hhu\t", i, heartrate_ram[i]);
 	}
 	printf_("%s", newLine);
-//#endif
+#endif
 	return HRRECEIVER_OK;
 }
 
