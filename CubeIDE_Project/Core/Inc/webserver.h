@@ -13,9 +13,10 @@
 #include "FreeRTOS.h"			// For FreeRTOS API functions (and general functionality)
 #include "cmsis_os2.h"			// For CMSIS API functions
 #include "stdbool.h"			// For type bool
-#include "printf.h"				// For optimized printf function made for embedded systems
+#include "printf.h"				// Optimized printf function made for embedded systems
 #include "string.h"				// For string manipulation functions
 #include "helper.h"				// For various helper functions
+//#include "picohttpparser.h"		// For parsing HTTP requests
 
 // ------------------------------------------------------------ MACROS
 // Module macros
@@ -64,7 +65,7 @@ typedef struct responsePacket{
     uint8_t link_id;
     char ip_address[16];
     char request_type[8];
-    char request_path[64];
+    char response_path[64];
     bool connection_alive;
 } responsePacket_t ;
 
@@ -81,5 +82,7 @@ void Webserver(void *argument);
 WEBSERVER_RETVAL webserver_handle_connection();
 WEBSERVER_RETVAL webserver_handle_request();
 bool webserver_failureHandler(WEBSERVER_RETVAL value);
+
+// ------------------------------------------------------------ Webserver functions
 
 #endif /* INC_WEBSERVER_H_ */

@@ -7,6 +7,9 @@
 
 #include "helper.h"
 
+extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
+
 bool flagErrorHandler(uint32_t flag) {
 	if(!(flag & osFlagsError)) {
 		// No error indicator == no error
@@ -99,6 +102,84 @@ bool osStatusHandler(osStatus_t val) {
 	}
 	return true;
 }
+
+void translate_I2C_Error(I2C_HandleTypeDef *hi2c) {
+	uint32_t error_value = HAL_I2C_GetError(hi2c);
+	printf_("I2C: ");
+	switch(error_value) {
+	case HAL_I2C_ERROR_NONE:
+		printf_("No error");
+		break;
+	case HAL_I2C_ERROR_BERR:
+		printf_("BERR error");
+		break;
+	case HAL_I2C_ERROR_ARLO:
+		printf_("ARLO error");
+		break;
+	case HAL_I2C_ERROR_AF:
+		printf_("ACKF error");
+		break;
+	case HAL_I2C_ERROR_OVR:
+		printf_("OVR error");
+		break;
+	case HAL_I2C_ERROR_DMA:
+		printf_("DMA transfer error");
+		break;
+	case HAL_I2C_ERROR_TIMEOUT:
+		printf_("Timeout error");
+		break;
+	case HAL_I2C_ERROR_SIZE:
+		printf_("Size Management error");
+		break;
+	case HAL_I2C_ERROR_DMA_PARAM:
+		printf_("DMA Parameter Error");
+		break;
+	default:
+		printf_("Unknown I2C Error");
+		break;
+	}
+	printf_(" (0x%08lx)\r\n", error_value);
+}
+
+void translate_UART_Error(UART_HandleTypeDef *huart) {
+	uint32_t error_value = HAL_UART_GetError(huart);
+	printf_("UART: ");
+	switch(error_value){
+	case HAL_UART_ERROR_NONE:
+		printf_("No error");
+		break;
+	case HAL_UART_ERROR_PE:
+		printf_("Parity error");
+		break;
+	case HAL_UART_ERROR_NE:
+		printf_("Noise error");
+		break;
+	case HAL_UART_ERROR_FE:
+		printf_("Frame error");
+		break;
+	case HAL_UART_ERROR_ORE:
+		printf_("Overrun error");
+		break;
+	case HAL_UART_ERROR_DMA:
+		printf_("DMA transfer error");
+		break;
+	case HAL_UART_ERROR_RTO:
+		printf_("Receiver Timeout error");
+		break;
+	default:
+		printf_("Unknown UART Error");
+		break;
+	}
+	printf_(" (0x%08lx)\r\n", error_value);
+}
+
+#define  HAL_UART_ERROR_NONE             (0x00000000U)    /*!< No error                */
+#define  HAL_UART_ERROR_PE               (0x00000001U)    /*!< Parity error            */
+#define  HAL_UART_ERROR_NE               (0x00000002U)    /*!< Noise error             */
+#define  HAL_UART_ERROR_FE               (0x00000004U)    /*!< Frame error             */
+#define  HAL_UART_ERROR_ORE              (0x00000008U)    /*!< Overrun error           */
+#define  HAL_UART_ERROR_DMA              (0x00000010U)    /*!< DMA transfer error      */
+#define  HAL_UART_ERROR_RTO              (0x00000020U)    /*!< Receiver Timeout error  */
 
 void printDebug(const char *msg) {
 #ifdef DEBUG

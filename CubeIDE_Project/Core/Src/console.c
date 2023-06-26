@@ -35,8 +35,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	  // Restart reception with interrupt
 	  HAL_StatusTypeDef status = HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
 	  if(halStatusHandler(status)) {
-		  printf_("ISR: HAL status error: 0x%02x%s", status, newLine);
+		  printf_("ISR: error in RX complete callback: ");
+		  translate_UART_Error(&huart2);
 	  }
+  }
+  else if(huart->Instance == USART1) {
+	  printf_("ISR: USART1 == Complete%s", newLine);
   }
 }
 
@@ -95,13 +99,15 @@ CONSOLE_RETVAL console_handle_rxByte() {
 
 	ret = HAL_UART_Transmit(&huart2, (uint8_t*)&c, 1, HAL_MAX_DELAY); // UART line echo
 	if(halStatusHandler(ret)) {
-		printf_("CONSOLE: echo transmit error: 0x%02x%s", ret, newLine);
+		printf_("CONSOLE: echo transmit error: ");
+		translate_UART_Error(&huart2);
 	}
 
 	if(c == '\r') {
 		ret = HAL_UART_Transmit(&huart2, (uint8_t*)newLine, 2, HAL_MAX_DELAY);
 		if(halStatusHandler(ret)) {
-			printf_("CONSOLE: newline transmit error: 0x%02x%s", ret, newLine);
+			printf_("CONSOLE: newline transmit error: ");
+			translate_UART_Error(&huart2);
 		}
 		return CONSOLE_NEW_DATA;
 	} else {
@@ -115,14 +121,25 @@ CONSOLE_RETVAL console_handle_rxByte() {
 	}
 	return CONSOLE_OK;
 }
-CONSOLE_RETVAL console_handle_newInput() {
-	osStatus_t ret;
-	uint32_t flag_return;
-	// Check semaphore if input is available
-	ret = osSemaphoreAcquire(inputSem, MODULE_SEM_TIMEOUT);
-	if(osStatusHandler(ret)) {
+
+// Custom enter method for clearing buffer
+CONSOLE_RETVAL console_enter_copy() {
+	if(acquire_semaphore(inputSem, MODULE_SEM_TIMEOUT) != CONSOLE_OK) {
 		return CONSOLE_FAILED_COPY;
 	}
+	// Clear any previously allocated buffer of input
+	vPortFree(input); // The case (input == NULL) is ignored by heap4.c
+	input = NULL; // Reset pointer
+	return CONSOLE_OK;
+}
+
+CONSOLE_RETVAL console_handle_newInput() {
+	uint32_t flag_return;
+	CONSOLE_RETVAL console_return;
+	if((console_return = console_enter_copy()) != CONSOLE_OK) {
+		return console_return;
+	}
+	// -------------------------------- START OF COPY
 	// Request heap memory for data
 	input = pvPortMalloc(sizeof(char)*uart2BufferIndex+1);
 	if(input == NULL) {
@@ -131,12 +148,11 @@ CONSOLE_RETVAL console_handle_newInput() {
 	// Copy data
 	memcpy(input, uart2Buffer, uart2BufferIndex);
 	input[uart2BufferIndex] = '\0';
-	// Release semaphore for input
-	ret = osSemaphoreRelease(inputSem);
-	if(osStatusHandler(ret)) {
-		return CONSOLE_FAILED_SEMAPHORE;
+	// -------------------------------- END OF COPY
+	if((console_return = release_semaphore(inputSem)) != CONSOLE_OK) {
+		return console_return;
 	}
-	// Notify parser about new message
+	// Notify parser about new input
 	flag_return = osThreadFlagsSet(parserThreadId, NEW_INPUT);
 	if(flagErrorHandler(flag_return)) {
 		return CONSOLE_FAILED_FLAG;
@@ -154,6 +170,8 @@ CONSOLE_RETVAL console_handle_bufferOverrun() {
 CONSOLE_RETVAL console_prep_peripherals() {
 	HAL_StatusTypeDef ret = HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
 	if(halStatusHandler(ret)) {
+		printf_("CONSOLE: error in interrupt peripherals: ");
+		translate_UART_Error(&huart2);
 		return CONSOLE_RESOURCE_ERROR;
 	}
 	return CONSOLE_OK;

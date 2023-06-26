@@ -11,7 +11,12 @@
 // (configured in application.c)
 extern const char *newLine;
 extern const char *HTTP_HEADER;
+extern const char *HTTP_CONTENT_TYPE_HTML;
+extern const char *HTTP_CONTENT_TYPE_TEXT;
+extern const char *HTTP_CONTENT_TYPE_JSON;
+extern const char *HTTP_CONTENT_LENGTH_TEMPLATE;
 extern const char *HTML_TEMPLATE;
+extern DMA_HandleTypeDef hdma_usart1_rx;
 extern osThreadId_t wifibleThreadId;
 extern const osThreadAttr_t wifible_attr;
 extern osThreadId_t wifibleReceiverThreadId;
@@ -22,8 +27,47 @@ extern char *newMsg;
 extern osSemaphoreId_t msgSem;
 extern char *input;
 extern osSemaphoreId_t inputSem;
+extern uint8_t responseLink;
+extern osSemaphoreId_t i2cSem;
+extern uint8_t *heartrate_ram;
+extern uint8_t heartrate_read_index;
+extern uint8_t clients[4];
+extern uint8_t requestType;
+#ifndef USE_WEBSERVER
+extern char page[1024];
+extern char response[1024];
+#endif
+
+//#define WIFIBLE_DEBUG
+
+/*
+const char *ip_address;
+const char *port;
+*/
 
 // ------------------------------------------------------------ Interrupt routines
+
+void HAL_UART_AbortCpltCallback(UART_HandleTypeDef *huart) {
+#ifdef DEBUG
+	printf_("ISR: HAL_UART_AbortCpltCallback%s", newLine);
+#endif
+}
+
+void HAL_UART_AbortReceiveCpltCallback(UART_HandleTypeDef *huart) {
+#ifdef DEBUG
+	printf_("ISR: HAL_UART_AbortReceiveCpltCallback%s", newLine);
+#endif
+	if(huart->Instance == USART1) {
+		/*
+		HAL_StatusTypeDef ret = HAL_UART_Receive_DMA(&huart1, uart1Buffer, WIFIBLE_UART_BUFFER_SIZE);
+		if(halStatusHandler(ret)) {
+			printf_("ISR: error in DMA peripherals: ");
+			translate_UART_Error(&huart1);
+			return WIFIBLE_RESOURCE_ERROR;
+		}
+		*/
+	}
+}
 
 // ------------------------------------------------------------ TASKS
 
@@ -38,14 +82,18 @@ void StartWifiBleModule(void *argument) {
 		wifible_wifi_cfg_t *module_config = wifible_wifi_default_cfg();
 		wifibleThreadId = osThreadNew(WifiReceiver, NULL, &wifible_attr);
 		wifible_prep_peripherals();
+#ifndef WIFIBLE_SKIP_CONFIGURATION
 		wifible_wifi_initialization(module_config);
+#endif
 
 	} else if(module.mode == WIFIBLE_BLUETOOTH_MODE) {
 		// Initialize bluetooth
 		wifible_bt_cfg_t *module_config = wifible_bt_default_cfg();
 		wifibleThreadId = osThreadNew(BluetoothBeacon, NULL, &wifible_attr);
 		wifible_prep_peripherals();
+#ifndef WIFIBLE_SKIP_CONFIGURATION
 		wifible_bt_initialization(module_config);
+#endif
 	}
 	osThreadExit(); // Destroy task
 }
@@ -58,13 +106,19 @@ void WifiReceiver(void *argument) {
 	WIFIBLE_RETVAL ret;
 	while(1) {
 		// Wait for thread flags
-		flags = osThreadFlagsWait(IDLE_EVENT|COPY_REATTEMPT|USER_INPUT, osFlagsWaitAny, osWaitForever);
+		flags = osThreadFlagsWait(IDLE_EVENT|COPY_REATTEMPT|USER_INPUT|NEW_RESPONSE, osFlagsWaitAny, osWaitForever);
 		if(flagErrorHandler(flags)) {
 			// On flag error, continue loop from beginning
 			continue;
 		}
 		// Wifi Receiver (USART1) State-Machine
 		if(flags & IDLE_EVENT) {
+			/*
+			HAL_DMA_StateTypeDef dma_state = HAL_DMA_GetState(&hdma_usart1_rx);
+			if(dma_state != HAL_DMA_STATE_BUSY) {
+				printf_("WIFIBLE: DMA stopped: gState == 0x%08lx RxState == 0x%08lx%s", huart1.gState, huart1.RxState, newLine);
+			}
+			*/
 			size_t new_pos = WIFIBLE_UART_BUFFER_SIZE - huart1.hdmarx->Instance->CNDTR;  // Compute the new position in the buffer
 			if(new_pos != old_pos)  // Check if any new data is received
 			{
@@ -88,7 +142,13 @@ void WifiReceiver(void *argument) {
 		if(flags & USER_INPUT) {
 			ret = wifible_handle_userInput();
 			if(wifible_failureHandler(ret)) {
-				printf_("WIFIBLE: Handlign user input failed: 0x%02x%s", ret, newLine);
+				printf_("WIFIBLE: Handling user input failed: 0x%02x%s", ret, newLine);
+			}
+		}
+		if(flags & NEW_RESPONSE) {
+			ret = wifible_handle_newRequest();
+			if(wifible_failureHandler(ret)) {
+				printf_("WIFIBLE: Handling new request failed: 0x%02x%s", ret, newLine);
 			}
 		}
 	}
@@ -236,8 +296,13 @@ WIFIBLE_RETVAL wifible_handle_newData(size_t old_pos, size_t new_pos) {
 	{
 		length = new_pos - old_pos;
 		// Transmit data
+#ifdef WIFIBLE_DEBUG
 		ret = HAL_UART_Transmit(&huart2, &uart1Buffer[old_pos], length, HAL_MAX_DELAY);
-		halStatusHandler(ret);
+		if(halStatusHandler(ret)) {
+			printf_("WIFIBLE: ");
+			translate_UART_Error(&huart2);
+		}
+#endif
 		// Process your data => uart1Buffer[old_pos] TO uart1Buffer[old_pos+length] == Received DATA
 		return wifible_attempt_fullCopy(old_pos, length);
 	}
@@ -248,27 +313,54 @@ WIFIBLE_RETVAL wifible_handle_newData(size_t old_pos, size_t new_pos) {
 		// First transmit the data until the end of the buffer
 		length = WIFIBLE_UART_BUFFER_SIZE - old_pos;
 		size_t tmp = length;
+#ifdef WIFIBLE_DEBUG
 		ret = HAL_UART_Transmit(&huart2, &uart1Buffer[old_pos], length, HAL_MAX_DELAY);
-		halStatusHandler(ret);
-
+		if(halStatusHandler(ret)) {
+			printf_("WIFIBLE: ");
+			translate_UART_Error(&huart2);
+		}
+#endif
 		// Then transmit the remaining data from the beginning of the buffer
 		length = new_pos;
+#ifdef WIFIBLE_DEBUG
 		ret = HAL_UART_Transmit(&huart2, uart1Buffer, length, HAL_MAX_DELAY);
-		halStatusHandler(ret);
+		if(halStatusHandler(ret)) {
+			printf_("WIFIBLE: ");
+			translate_UART_Error(&huart2);
+		}
+#endif
 		// Process data partially
 		return wifible_attempt_partialCopy(old_pos, tmp, length);
 	}
 }
 
-WIFIBLE_RETVAL wifible_attempt_fullCopy(size_t start_pos, size_t length) {
-	osStatus_t ret;
-	uint32_t flag_return;
-	// Check semaphore if newMsg is available
-	ret = osSemaphoreAcquire(msgSem, MODULE_SEM_TIMEOUT);
-	if(osStatusHandler(ret)) {
+/* NOTE: Nearly identical implementations
+ * The functions "wifible_attempt_fullCopy" and "wifible_attempt_partialCopy" are almost identical in nature
+ * I decided to keep it that way for time being.
+ * The following needs to be kept in mind when changing the functions:
+ *  - Anything before "START OF COPY" and after "END OF COPY" must be kept identical
+ * This may change in the future, this note should serve as a reminder
+ */
+
+// Custom enter method for clearing buffer
+WIFIBLE_RETVAL wifible_enter_copy() {
+	if(acquire_semaphore(msgSem, MODULE_SEM_TIMEOUT) != WIFIBLE_OK) {
 		return WIFIBLE_FAILED_COPY;
 	}
-	// Request heap memory for data
+	// Clear any previously allocated buffer of newMsg
+	vPortFree(newMsg); // The case (newMsg == NULL) is ignored by heap4.c
+	newMsg = NULL; // Reset pointer
+	return WIFIBLE_OK;
+}
+
+WIFIBLE_RETVAL wifible_attempt_fullCopy(size_t start_pos, size_t length) {
+	uint32_t flag_return;
+	WIFIBLE_RETVAL wifible_return;
+	if((wifible_return = wifible_enter_copy()) != WIFIBLE_OK) {
+		return wifible_return;
+	}
+	// -------------------------------- START OF COPY
+	// Request new heap memory for received data
 	newMsg = pvPortMalloc(sizeof(char)*length+1);
 	if(newMsg == NULL) {
 		return WIFIBLE_MEM_ERROR;
@@ -276,10 +368,9 @@ WIFIBLE_RETVAL wifible_attempt_fullCopy(size_t start_pos, size_t length) {
 	// Copy data
 	memcpy(newMsg, uart1Buffer+start_pos, length);
 	newMsg[length] = '\0';
-	// Release semaphore for newMsg
-	ret = osSemaphoreRelease(msgSem);
-	if(osStatusHandler(ret)) {
-		return WIFIBLE_FAILED_SEMAPHORE;
+	// -------------------------------- END OF COPY
+	if((wifible_return = release_semaphore(msgSem)) != WIFIBLE_OK) {
+		return wifible_return;
 	}
 	// Notify parser about new message
 	flag_return = osThreadFlagsSet(parserThreadId, MSG_EVENT);
@@ -290,13 +381,12 @@ WIFIBLE_RETVAL wifible_attempt_fullCopy(size_t start_pos, size_t length) {
 }
 
 WIFIBLE_RETVAL wifible_attempt_partialCopy(size_t start_pos, size_t len1, size_t len2) {
-	osStatus_t ret;
 	uint32_t flag_return;
-	// Check semaphore if newMsg is available
-	ret = osSemaphoreAcquire(msgSem, MODULE_SEM_TIMEOUT);
-	if(osStatusHandler(ret)) {
-		return WIFIBLE_FAILED_COPY;
+	WIFIBLE_RETVAL wifible_return;
+	if((wifible_return = wifible_enter_copy()) != WIFIBLE_OK) {
+		return wifible_return;
 	}
+	// -------------------------------- START OF COPY
 	// Request heap memory for data
 	newMsg = pvPortMalloc(sizeof(char)*(len1+len2)+1);
 	if(newMsg == NULL) {
@@ -307,10 +397,9 @@ WIFIBLE_RETVAL wifible_attempt_partialCopy(size_t start_pos, size_t len1, size_t
 	// copy 2nd part of data
 	memcpy(newMsg+len1, uart1Buffer, len2);
 	newMsg[len1+len2] = '\0';
-	// Release semaphore for newMsg
-	ret = osSemaphoreRelease(msgSem);
-	if(osStatusHandler(ret)) {
-		return WIFIBLE_FAILED_SEMAPHORE;
+	// -------------------------------- END OF COPY
+	if((wifible_return = release_semaphore(msgSem)) != WIFIBLE_OK) {
+		return wifible_return;
 	}
 	// Notify parser about new message
 	flag_return = osThreadFlagsSet(parserThreadId, MSG_EVENT);
@@ -322,30 +411,105 @@ WIFIBLE_RETVAL wifible_attempt_partialCopy(size_t start_pos, size_t len1, size_t
 
 WIFIBLE_RETVAL wifible_handle_userInput() {
 	char at_cmd_buf[AT_CMD_BUFFER_SIZE] = {0};
-	osStatus_t ret;
+	WIFIBLE_RETVAL wifible_return;
 	// Check semaphore if input is available
-	ret = osSemaphoreAcquire(inputSem, MODULE_SEM_TIMEOUT);
-	if(osStatusHandler(ret)) {
-		return WIFIBLE_FAILED_SEMAPHORE;
+	if((wifible_return = acquire_semaphore(inputSem, MODULE_SEM_TIMEOUT)) != WIFIBLE_OK) {
+		return wifible_return;
 	}
 	// Forward input to WIFIBLE module
 	at_execute_command(at_cmd_buf, wifible_send_command, input);
-	// Free allocated buffer
-	vPortFree(input);
-	input = NULL;
+	// NOTE: input Buffer is free'd by CONSOLE module
 	// Release semaphore to free input
-	ret = osSemaphoreRelease(inputSem);
-	if(osStatusHandler(ret)) {
-		return WIFIBLE_FAILED_SEMAPHORE;
+	if((wifible_return = release_semaphore(inputSem)) != WIFIBLE_OK) {
+		return wifible_return;
 	}
+	return WIFIBLE_OK;
+}
+
+WIFIBLE_RETVAL wifible_handle_newRequest() {
+	WIFIBLE_RETVAL wifible_return;
+	/*
+	if((wifible_return = acquire_semaphore(i2cSem, osWaitForever)) != WIFIBLE_OK) {
+		return wifible_return;
+	}
+	*/
+	// Get data to display on webpage
+	/*
+	int data = heartrate_ram[heartrate_read_index++];
+	if(heartrate_read_index >= HEARTRATE_RAM_SIZE) {
+		heartrate_read_index = 0;
+	}
+	*/
+	uint8_t data = heartrate_ram[0];
+	printf_("WIFIBLE: HEARTRATE=%hhu%s", data, newLine);
+	wifible_return = wifible_serve_webPage(responseLink, data);
+	return wifible_return;
+}
+
+WIFIBLE_RETVAL wifible_serve_webPage(uint8_t link_id, uint8_t data) {
+	char at_cmd_buf[AT_CMD_BUFFER_SIZE] = {0};
+
+	if(requestType == JSON_REQUEST) {
+		char header[64] = {0};
+		sprintf_(header, "%s%s", HTTP_HEADER, HTTP_CONTENT_TYPE_JSON);
+		uint16_t header_length = strlen(header);
+		sprintf_(page, "{\"DATA\":\"%hhu\"}\r\n", data);
+		uint16_t page_length = strlen(page);
+		sprintf_(header+header_length, HTTP_CONTENT_LENGTH_TEMPLATE, page_length);
+		sprintf_(response, "%s%s", header, page);
+		uint16_t response_length = strlen(response);
+		at_set_command(at_cmd_buf, wifible_send_command, AT_IP_Send, "%hhu,%hu", link_id, response_length);
+		osDelay(WIFIBLE_CMD_DELAY);
+		HAL_StatusTypeDef hal_return = HAL_UART_Transmit(&huart1, (uint8_t*)response, response_length, HAL_MAX_DELAY);
+		if(halStatusHandler(hal_return)) {
+			printf_("WIFIBLE: error serving webpage: ");
+			translate_UART_Error(&huart1);
+			return WIFIBLE_RW_ERROR;
+		}
+	} else {
+		clients[link_id] = CLIENT_2ND_CONNECT;
+		char header[64] = {0};
+		sprintf_(header, "%s%s", HTTP_HEADER, HTTP_CONTENT_TYPE_HTML);
+		uint16_t header_length = strlen(header);
+		sprintf_(page, HTML_TEMPLATE, data, "192.1.0.1", "80"); // 227 characters assuming number 1234
+		uint16_t page_length = strlen(page);
+		sprintf_(header+header_length, HTTP_CONTENT_LENGTH_TEMPLATE, page_length);
+		sprintf_(response, "%s%s", header, page);
+		uint16_t response_length = strlen(response);
+		at_set_command(at_cmd_buf, wifible_send_command, AT_IP_Send, "%hhu,%hu", link_id, response_length);
+		osDelay(WIFIBLE_CMD_DELAY);
+		HAL_StatusTypeDef hal_return = HAL_UART_Transmit(&huart1, (uint8_t*)response, response_length, HAL_MAX_DELAY);
+		if(halStatusHandler(hal_return)) {
+			printf_("WIFIBLE: error serving webpage: ");
+			translate_UART_Error(&huart1);
+			return WIFIBLE_RW_ERROR;
+		}
+#ifdef WIFIBLE_DEBUG
+		printf_("WIFIBLE: Sent:%s%s%s", newLine, response, newLine);
+#endif
+	}
+	osDelay(WIFIBLE_CMD_DELAY);
+	at_set_command(at_cmd_buf, wifible_send_command, AT_IP_CloseConnection, "%hhu", link_id);
+	osDelay(WIFIBLE_CMD_DELAY);
+	memset(page, 0, 1024); // Reset page buffer
+	memset(response, 0, 1024); // reset response buffer
 	return WIFIBLE_OK;
 }
 
 void wifible_send_command(char *command, int length) {
 	HAL_StatusTypeDef ret = HAL_UART_Transmit(&huart1, (uint8_t*)command, length, HAL_MAX_DELAY);
 	if(halStatusHandler(ret)) {
-		printf_("WIFIBLE: error sending command: %s (0x%02x)%s", command, ret, newLine);
+		printf_("WIFIBLE: error sending command: %s%s", command, newLine);
+		translate_UART_Error(&huart1);
 	}
+}
+
+void wifible_uart_receive_callback(UART_HandleTypeDef *huart) {
+	printf_("WIFIBLE: UART callback%s", newLine);
+}
+
+void wifible_dma_receive_callback(DMA_HandleTypeDef *hdma) {
+	printf_("WIFIBLE: DMA callback%s", newLine);
 }
 
 WIFIBLE_RETVAL wifible_prep_peripherals() {
@@ -353,21 +517,18 @@ WIFIBLE_RETVAL wifible_prep_peripherals() {
 	LL_USART_EnableIT_IDLE(USART1); // Enable idle line detection (interrupt) for uart1
 	// NOTE: Please check stm32l4xx_it.c & usart.c for the USER-CODE that handles the IDLE Line Interrupt!!
 	HAL_StatusTypeDef ret = HAL_UART_Receive_DMA(&huart1, uart1Buffer, WIFIBLE_UART_BUFFER_SIZE);
+	//HAL_StatusTypeDef ret = HAL_UARTEx_ReceiveToIdle_DMA(&huart1, uart1Buffer, WIFIBLE_UART_BUFFER_SIZE);
+	//huart1.ReceptionType = HAL_UART_RECEPTION_TOIDLE;
 	if(halStatusHandler(ret)) {
-		printf_("WIFIBLE: error in DMA peripherals: 0x%02x%s", ret, newLine);
+		printf_("WIFIBLE: error in DMA peripherals: ");
+		translate_UART_Error(&huart1);
 		return WIFIBLE_RESOURCE_ERROR;
 	}
+	//HAL_DMA_RegisterCallback(&hdma_usart1_rx, HAL_DMA_XFER_CPLT_CB_ID, wifible_dma_receive_callback);
+#if (USE_HAL_UART_REGISTER_CALLBACKS == 1)
+	HAL_UART_RegisterCallback(&huart1, HAL_UART_RX_COMPLETE_CB_ID, wifible_uart_receive_callback);
+#endif
 	return WIFIBLE_OK;
-}
-
-void wifible_serve_webPage() {
-	char page[64];
-	// Get data to display on webpage
-	int data = 1234;  // TODO: Replace with actual function to get data
-	sprintf_(page, HTML_TEMPLATE, data);
-	char response[128];
-	// Format the HTML with the data
-	at_set_command(response, wifible_send_command, AT_IP_Send, "%s\r\n%s", HTTP_HEADER, page);
 }
 
 bool wifible_failureHandler(WIFIBLE_RETVAL value) {

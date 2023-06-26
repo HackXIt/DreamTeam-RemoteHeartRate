@@ -32,15 +32,14 @@ extern const char *newLine;
 extern osThreadId_t webserverThreadId;
 extern const osThreadAttr_t webserver_attr;
 extern osThreadId_t parserThreadId;
-extern osMessageQueueId_t clientPipe;
-extern osMessageQueueId_t requestPipe;
-extern osMessageQueueId_t responsePipe;
+extern osSemaphoreId_t httpSem;
+extern char *http_data;
 
 // ------------------------------------------------------------ TASKS
 
 void StartWebserverModule(void *argument) {
 	webserver_module_t *module = (webserver_module_t*)argument;
-	osThreadNew(Webserver, module, &webserver_attr);
+	webserverThreadId = osThreadNew(Webserver, module, &webserver_attr);
 	osThreadExit();
 }
 
@@ -70,12 +69,13 @@ void Webserver(void *argument) {
 }
 
 // ------------------------------------------------------------ PRIVATE
-WEBSERVER_RETVAL webserver_handle_connection() {
 
+WEBSERVER_RETVAL webserver_handle_connection() {
+	return WEBSERVER_NOT_IMPLEMENTED;
 }
 
 WEBSERVER_RETVAL webserver_handle_request() {
-
+	return WEBSERVER_NOT_IMPLEMENTED;
 }
 
 bool webserver_failureHandler(WEBSERVER_RETVAL value) {
@@ -83,23 +83,34 @@ bool webserver_failureHandler(WEBSERVER_RETVAL value) {
 	case WEBSERVER_OK:
 		return false;
 	case WEBSERVER_FAILED_COPY:
+		printf_("WEBSERVER: Failed copy!%s", newLine);
 		break;
 	case WEBSERVER_FAILED_SEMAPHORE:
+		printf_("WEBSERVER: Failed semaphore!%s", newLine);
 		break;
 	case WEBSERVER_FAILED_FLAG:
+		printf_("WEBSERVER: Failed flag!%s", newLine);
 		break;
 	case WEBSERVER_FAILED_QUEUE:
+		printf_("WEBSERVER: Failed queue!%s", newLine);
 		break;
 	case WEBSERVER_MEM_ERROR:
+		printf_("WEBSERVER: Out of memory!%s", newLine);
 		break;
 	case WEBSERVER_CONNECTION_ERROR:
+		printf_("WEBSERVER: Connection error!%s", newLine);
 		break;
 	case WEBSERVER_REQUEST_ERROR:
+		printf_("WEBSERVER: Request error!%s", newLine);
 		break;
 	case WEBSERVER_UNKOWN_ERROR:
+		printf_("WEBSERVER: Unknown error!%s", newLine);
 		break;
 	case WEBSERVER_INIT_ERROR:
+		printf_("WEBSERVER: Initialization error!%s", newLine);
 		break;
 	}
 	return true;
 }
+
+// ------------------------------------------------------------ Webserver functions

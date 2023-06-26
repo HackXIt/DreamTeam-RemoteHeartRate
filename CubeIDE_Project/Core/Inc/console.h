@@ -63,6 +63,7 @@ void ConsoleMonitor(void *argument);
 // ------------------------------------------------------------ PRIVATE
 // Private functions used in tasks
 CONSOLE_RETVAL console_handle_rxByte();
+CONSOLE_RETVAL console_enter_copy();
 CONSOLE_RETVAL console_handle_newInput();
 CONSOLE_RETVAL console_handle_bufferOverrun();
 CONSOLE_RETVAL console_prep_peripherals();

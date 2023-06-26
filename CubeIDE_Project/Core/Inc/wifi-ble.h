@@ -29,7 +29,7 @@
 #define WIFIBLE_MODULE_NAME					"WIFIBLE"
 #define WIFIBLE_MODULE_INIT_NAME			"WifiBleInit"
 #define WIFIBLE_RETVAL						uint8_t
-#define WIFIBLE_CMD_DELAY					1000U
+#define WIFIBLE_CMD_DELAY					100U
 #define WIFIBLE_UART_BUFFER_SIZE			4096
 // Power macros (0xEX)
 #define WIFIBLE_POWER_ON					0xE1
@@ -47,9 +47,9 @@
 // Error macros (0xFX)
 #define WIFIBLE_NOT_IMPLEMENTED 			0xFA
 #define WIFIBLE_MEM_ERROR					0xFB
-#define WIFIBLE_RESOURCE_ERROR				0xFC
+#define WIFIBLE_POWER_ERROR					0xFC
 #define WIFIBLE_RW_ERROR					0xFD
-#define WIFIBLE_POWER_ERROR					0xFE
+#define WIFIBLE_RESOURCE_ERROR				0xFE
 #define WIFIBLE_INIT_ERROR					0xFF
 
 // ------------------------------------------------------------ TYPES
@@ -97,12 +97,14 @@ WIFIBLE_RETVAL wifible_bt_clear_cfg(wifible_bt_cfg_t *cfg);
 WIFIBLE_RETVAL wifible_bt_initialization(wifible_bt_cfg_t *cfg);
 WIFIBLE_RETVAL wifible_power_module(uint8_t power_state);
 WIFIBLE_RETVAL wifible_handle_newData(size_t old_pos, size_t new_pos);
+WIFIBLE_RETVAL wifible_enter_copy();
 WIFIBLE_RETVAL wifible_attempt_fullCopy(size_t start_pos, size_t length);
 WIFIBLE_RETVAL wifible_attempt_partialCopy(size_t start_pos, size_t len1, size_t len2);
 WIFIBLE_RETVAL wifible_handle_userInput();
+WIFIBLE_RETVAL wifible_handle_newRequest();
+WIFIBLE_RETVAL wifible_serve_webPage(uint8_t link_id, uint8_t data);
 void wifible_send_command(char *command, int length);
 WIFIBLE_RETVAL wifible_prep_peripherals();
-void wifible_serve_webPage();
 bool wifible_failureHandler(WIFIBLE_RETVAL value);
 
 #endif /* INC_WIFI_BLE_H_ */
