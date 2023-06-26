@@ -506,6 +506,7 @@ WIFIBLE_RETVAL wifible_serve_webPage(uint8_t link_id) {
 	}
 	// Wait until TC flag is set
 	while(!(huart1.Instance->ISR & USART_ISR_TC));
+	osDelay(WIFIBLE_CMD_DELAY);
 	// Just close all the connections
 	at_set_command(at_cmd_buf, wifible_send_command, AT_IP_CloseConnection, "%hhu", 5);
 	osDelay(WIFIBLE_CMD_DELAY);
